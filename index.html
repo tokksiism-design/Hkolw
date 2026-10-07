@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Реверс с нуля — даже с телефона</title>
+<meta name="description" content="Реверс-инжиниринг с нуля: основы, архитектуры CPU, Termux + proot Debian + Ghidra на Android, практика.">
+<style>
+:root{
+  --text:#2C2C2B;--muted:#6B6863;--bg:#FFFFFF;--soft:#F9F8F7;--soft2:#F0EFED;--border:#E6E5E3;
+  --blue:#1F74C8;--blue-s:#E5F2FC;--green:#2F7F55;--green-s:#E8F1EC;--orange:#A85A1C;--orange-s:#FBEBDE;--red:#B9433A;--red-s:#FCE9E7;
+  --code-bg:#F6F5F3;--mono:Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --text:#FFFFFF;--muted:rgba(255,255,255,.68);--bg:#191919;--soft:#202020;--soft2:#2C2C2B;--border:rgba(255,255,255,.18);
+  --blue:#5E9FE8;--blue-s:rgba(94,159,232,.13);--green:#72BC8F;--green-s:rgba(114,188,143,.13);--orange:#DE9255;--orange-s:rgba(222,146,85,.13);--red:#E97366;--red-s:rgba(233,115,102,.13);
+  --code-bg:#242423;
+}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 var(--sans);-webkit-text-size-adjust:100%}
+a{color:var(--blue)}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 32px}
+.prose{max-width:720px}
+header.top{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--border)}
+header.top .wrap{display:flex;align-items:center;gap:16px;height:56px;position:relative}
+.logo{font-weight:700;white-space:nowrap;text-decoration:none;color:var(--text)}
+.logo span{color:var(--blue)}
+nav.toc{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1}
+nav.toc::-webkit-scrollbar{display:none}
+nav.toc a{white-space:nowrap;text-decoration:none;color:var(--muted);font-size:14px;padding:8px 10px;border-radius:6px}
+nav.toc a:hover,nav.toc a.on{color:var(--text);background:var(--soft2)}
+.bar{position:absolute;left:0;bottom:-1px;height:2px;background:var(--blue);width:0}
+section{padding:64px 0;border-bottom:1px solid var(--border)}
+section.alt{background:var(--soft)}
+.hero{padding:88px 0 64px}
+.eyebrow{font-size:14px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--blue);margin:0 0 12px}
+h1{font-size:44px;line-height:1.12;margin:0 0 16px;letter-spacing:-.02em}
+h2{font-size:28px;line-height:1.25;margin:0 0 12px;letter-spacing:-.01em}
+h3{font-size:19px;margin:32px 0 8px}
+.lead{font-size:19px;color:var(--muted);margin:0 0 24px}
+p{margin:0 0 16px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:6px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+code,kbd{font-family:var(--mono);font-size:.88em;background:var(--code-bg);border:1px solid var(--border);padding:1px 5px;border-radius:4px}
+kbd{font-weight:600;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font:600 15px var(--sans);cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--soft2)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.sm{min-height:36px;font-size:14px;padding:0 12px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px;min-width:0}
+.card h4{margin:0 0 6px;font-size:16px}
+.card p{margin:0;color:var(--muted);font-size:15px}
+.tag{display:inline-block;font-size:13px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--blue-s);color:var(--blue);margin-bottom:8px}
+.callout{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px}
+.callout .ic{font-size:18px;line-height:1.5;flex:none}
+.callout>div{min-width:0}
+.callout.warn{background:var(--orange-s)}
+.callout.risk{background:var(--red-s)}
+.callout.ok{background:var(--green-s)}
+.callout.info{background:var(--blue-s)}
+.callout p:last-child,.callout ul:last-child{margin:0}
+.code{position:relative;margin:14px 0 18px}
+.code pre{margin:0;background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;padding-right:76px;overflow-x:auto;font:14px/1.6 var(--mono);white-space:pre}
+.code .copy{position:absolute;top:6px;right:6px;min-height:34px;min-width:60px;font-size:13px;padding:0 10px}
+.c{color:var(--muted)}
+.k{color:var(--blue)}
+.hl{background:var(--orange-s);border-radius:3px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:thin}
+.tabs button{min-height:44px;padding:0 14px;border:0;background:none;color:var(--muted);font:600 15px var(--sans);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--blue)}
+.tabpanel{padding-top:8px}
+/* pipeline */
+.pipe{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:24px 0 8px}
+.pipe button{min-height:64px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;font:600 15px var(--sans);cursor:pointer;padding:8px;text-align:left}
+.pipe button small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.pipe button[aria-pressed="true"]{border-color:var(--blue);background:var(--blue-s)}
+.lost{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.lost span{font-size:14px;padding:4px 10px;border-radius:999px;border:1px solid var(--border)}
+.lost span.gone{text-decoration:line-through;color:var(--muted);background:var(--red-s);border-color:transparent}
+/* table */
+.tbl{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+table{border-collapse:collapse;width:100%;font-size:15px;min-width:640px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+th{font-size:13px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+/* inputs */
+label.f{display:block;font-weight:600;font-size:14px;margin:0 0 6px}
+input[type=text],input[type=number],textarea,select{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:15px var(--mono)}
+textarea{min-height:88px;resize:vertical}
+.out{margin-top:14px;border:1px solid var(--border);border-radius:10px;padding:16px;background:var(--bg)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:15px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-weight:600;word-break:break-word}
+.bytes{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+.bytes span{font:600 15px var(--mono);padding:6px 9px;border-radius:6px;background:var(--soft2)}
+.bytes span.lsb{background:var(--blue-s);color:var(--blue)}
+/* steps */
+.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+.steps>li{counter-increment:s;position:relative;padding:0 0 28px 52px;margin:0}
+.steps>li::before{content:counter(s);position:absolute;left:0;top:0;width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:15px}
+.steps>li::after{content:"";position:absolute;left:16px;top:40px;bottom:6px;width:2px;background:var(--border)}
+.steps>li:last-child::after{display:none}
+.steps h4{margin:4px 0 6px;font-size:17px}
+.where{display:inline-block;font:600 12px var(--sans);padding:2px 8px;border-radius:4px;margin-left:6px;vertical-align:2px}
+.where.t{background:var(--green-s);color:var(--green)}
+.where.d{background:var(--blue-s);color:var(--blue)}
+.where.p{background:var(--orange-s);color:var(--orange)}
+/* checklist */
+.check{list-style:none;padding:0;margin:0}
+.check li{border:1px solid var(--border);border-radius:10px;background:var(--bg);margin-bottom:8px}
+.check label{display:flex;gap:12px;padding:12px 14px;cursor:pointer;min-height:44px;align-items:flex-start}
+.check input{width:20px;height:20px;margin:2px 0 0;flex:none;accent-color:var(--blue)}
+.check b{display:block}
+.check .muted{font-size:14px}
+.check li.done{background:var(--green-s);border-color:transparent}
+.meter{height:8px;border-radius:99px;background:var(--soft2);overflow:hidden;margin:8px 0 16px}
+.meter i{display:block;height:100%;background:var(--green);width:0;transition:width .3s}
+details{border:1px solid var(--border);border-radius:10px;background:var(--bg);margin-bottom:8px}
+details summary{cursor:pointer;padding:12px 16px;font-weight:600;min-height:44px;display:flex;align-items:center;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"›";display:inline-block;width:18px;transition:transform .2s;color:var(--muted);font-size:20px}
+details[open] summary::before{transform:rotate(90deg)}
+details .db{padding:0 16px 14px 34px}
+/* quiz */
+.q{margin-bottom:20px}
+.q p{font-weight:600;margin-bottom:8px}
+.opts{display:grid;gap:8px}
+.opts button{text-align:left;min-height:44px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:15px var(--sans);cursor:pointer}
+.opts button:hover:not(:disabled){background:var(--soft2)}
+.opts button.right{background:var(--green-s);border-color:var(--green)}
+.opts button.wrong{background:var(--red-s);border-color:var(--red)}
+.opts button:disabled{cursor:default}
+.expl{font-size:14px;color:var(--muted);margin-top:6px;display:none}
+.expl.show{display:block}
+.msg{margin-top:10px;font-weight:600}
+.msg.okk{color:var(--green)} .msg.bad{color:var(--red)}
+footer{padding:40px 0 56px;color:var(--muted);font-size:14px}
+.reslist{columns:2;column-gap:32px}
+.reslist li{break-inside:avoid}
+@media (max-width:860px){
+  .g3{grid-template-columns:1fr 1fr}
+  .pipe{grid-template-columns:1fr 1fr}
+}
+@media (max-width:640px){
+  .wrap{padding:0 18px}
+  h1{font-size:32px} h2{font-size:24px} .lead{font-size:17px}
+  .g2,.g3{grid-template-columns:1fr}
+  section{padding:48px 0}
+  .hero{padding:56px 0 40px}
+  .logo{display:none}
+  .reslist{columns:1}
+  .steps>li{padding-left:46px}
+  .code.hc pre{padding-top:44px;padding-right:16px}
+}
+.lg{display:inline-flex;gap:6px;align-items:center;margin-right:12px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#top">rev<span>/</span>0</a>
+    <nav class="toc" aria-label="Разделы">
+      <a href="#basics">Основы</a>
+      <a href="#arch">Архитектуры</a>
+      <a href="#identify">Что за файл?</a>
+      <a href="#workflow">Процесс</a>
+      <a href="#phone">Телефон</a>
+      <a href="#ghidra">Ghidra</a>
+      <a href="#practice">Практика</a>
+      <a href="#quiz">Тест</a>
+      <a href="#links">Ссылки</a>
+    </nav>
+    <div class="bar" id="bar"></div>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Реверс-инжиниринг · с нуля</p>
+    <h1>Разбираем чужие программы.<br>Даже с телефона.</h1>
+    <p class="lead prose">Что такое реверс, как устроен бинарник, чем ARM отличается от x86 и как поднять Ghidra на Android через Termux и proot Debian. Всё интерактивно: можно пощупать прямо здесь.</p>
+    <div class="row">
+      <a class="btn primary" href="#basics">Начать с основ</a>
+      <a class="btn" href="#phone">Сразу к установке на телефон</a>
+    </div>
+    <div class="callout risk" style="margin-top:32px">
+      <div class="ic">⚖️</div>
+      <div><p><b>Сначала о законе.</b> Реверсь свои программы, крякми, CTF и open-source. Взлом защиты, обход лицензий и распространение кряков чужого ПО во многих странах незаконны. Учебная цель не отменяет пользовательское соглашение и закон.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- BASICS -->
+<section id="basics" class="alt">
+  <div class="wrap">
+    <p class="eyebrow">01 · База</p>
+    <h2>Что вообще происходит</h2>
+    <div class="prose">
+      <p>Программист пишет код на понятном языке (C, C++, Rust, Go). <b>Компилятор</b> переводит его в <b>машинный код</b>: байты, которые процессор исполняет напрямую. Готовый файл называют <b>бинарником</b>.</p>
+      <p><b>Реверс</b> — это обратный путь: из байтов восстановить, что программа делает. Полностью исходник не вернуть, часть информации теряется при компиляции. Нажми на этапы и посмотри, что исчезает.</p>
+    </div>
+
+    <div class="pipe" role="group" aria-label="Этапы компиляции">
+      <button aria-pressed="true" data-step="0">1. Исходник<small>то, что пишет человек</small></button>
+      <button aria-pressed="false" data-step="1">2. Ассемблер<small>текстовые инструкции CPU</small></button>
+      <button aria-pressed="false" data-step="2">3. Машинный код<small>байты в файле</small></button>
+      <button aria-pressed="false" data-step="3">4. Декомпиляция<small>что покажет Ghidra</small></button>
+    </div>
+    <div class="code"><pre id="pipeCode"></pre></div>
+    <p class="small muted" id="pipeNote"></p>
+    <div class="lost" id="pipeLost" aria-live="polite"></div>
+
+    <h3>Два подхода</h3>
+    <div class="grid g2">
+      <div class="card"><span class="tag">Статический анализ</span><h4>Читаем, не запуская</h4><p>
+Открываем файл в дизассемблере/декомпиляторе (Ghidra, radare2), смотрим строки, функции, импорты. Безопасно: код не выполняется.</p></div>
+      <div class="card"><span class="tag">Динамический анализ</span><h4>Запускаем и подглядываем</h4><p>Отладчик (gdb, x64dbg), трассировка системных вызовов (strace), хуки (Frida). Видно реальные значения. Чужое и подозрительное запускай только в изоляции.</p></div>
+    </div>
+
+    <h3>Словарик на 1 минуту</h3>
+    <div class="grid g3">
+      <div class="card"><h4>Регистр</h4><p>Сверхбыстрая «переменная» внутри CPU: <code>rax</code>, <code>x0</code>, <code>r0</code>.</p></div>
+      <div class="card"><h4>Стек</h4><p>Память под локальные переменные и адреса возврата из функций.</p></div>
+      <div class="card"><h4>Инструкция</h4><p>Одна команда CPU: <code>mov</code>, <code>add</code>, <code>cmp</code>, <code>jmp</code>, <code>call</code>.</p></div>
+      <div class="card"><h4>Секции</h4><p><code>.text</code> — код, <code>.data</code> — данные, <code>.rodata</code> — константы и строки.</p></div>
+      <div class="card"><h4>Импорты</h4><p>Чужие функции из библиотек (<code>strcmp</code>, <code>printf</code>). Сразу подсказывают, что делает программа.</p></div>
+      <div class="card"><h4>Stripped</h4><p>Бинарник без имён функций. Вместо <code>check_password</code> увидишь <code>FUN_00101189</code>.</p></div>
+    </div>
+
+    <h3>Форматы файлов</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>Формат</th><th>Где живёт</th><th>Первые байты</th><th>Чем открывать</th></tr></thead>
+      <tbody>
+        <tr><td><b>ELF</b></td><td>Linux, Android (.so, бинарники), прошивки</td><td><code>7F 45 4C 46</code> «.ELF»</td><td>Ghidra, radare2, readelf</td></tr>
+        <tr><td><b>PE</b></td><td>Windows (.exe, .dll)</td><td><code>4D 5A</code> «MZ»</td><td>Ghidra, x64dbg</td></tr>
+        <tr><td><b>Mach-O</b></td><td>macOS, iOS</td><td><code>CF FA ED FE</code></td><td>Ghidra, otool</td></tr>
+        <tr><td><b>APK / DEX</b></td><td>Android-приложения (Java/Kotlin)</td><td><code>50 4B</code> «PK» / «dex\n»</td><td><b>jadx</b> (лучше Ghidra для Java-кода)</td></tr>
+        <tr><td><b>.NET</b></td><td>C#-программы (тоже PE)</td><td><code>4D 5A</code></td><td>dnSpyEx, ILSpy</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout info"><div class="ic">💡</div><div><p>Язык тоже решает. C/C++/Rust/Go → машинный код (Ghidra). Java/Kotlin/C# → байткод, он декомпилируется почти до исходника (jadx, ILSpy). Python → <code>.pyc</code>, тоже свои декомпиляторы. Сначала определи, с чем имеешь дело.</p></div></div>
+  </div>
+</section>
+
+<!-- ARCH -->
+<section id="arch">
+  <div class="wrap">
+    <p class="eyebrow">02 · Архитектуры</p>
+    <h2>Один код — разные процессоры</h2>
+    <div class="prose">
+      <p>Архитектура (ISA) — это «язык» процессора. Один и тот же C-код превращается в разные инструкции. Ниже функция <code>int add(int a, int b) { return a + b; }</code> под пять архитектур.</p>
+    </div>
+    <div class="tabs" role="tablist" id="archTabs"></div>
+    <div class="tabpanel" id="archPanel" role="tabpanel"></div>
+
+    <h3>Шпаргалка: куда смотреть</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>Архитектура</th><th>Где встречается</th><th>Аргументы функции</th><th>Результат</th><th>Возврат</th></tr></thead>
+      <tbody>
+        <tr><td><b>x86-64</b> (amd64)</td><td>ПК, ноутбуки, серверы</td><td>Linux: <code>rdi rsi rdx rcx r8 r9</code><br>Windows: <code>rcx rdx r8 r9</code></td><td><code>rax</code></td><td><code>ret</code></td></tr>
+        <tr><td><b>x86</b> (i386, 32-бит)</td><td>старые программы под Windows</td><td>через стек (<code>[esp+4]</code>…)</td><td><code>eax</code></td><td><code>ret</code></td></tr>
+        <tr><td><b>ARM64</b> (AArch64)</td><td>почти все телефоны, Apple M, Raspberry Pi 4/5</td><td><code>x0–x7</code> (<code>w0</code> — 32-бит часть)</td><td><code>x0</code></td><td><code>ret</code> (адрес в <code>x30</code>/LR)</td></tr>
+        <tr><td><b>ARM32</b> (ARMv7, Thumb)</td><td>старые телефоны, микроконтроллеры</td><td><code>r0–r3</code>, дальше стек</td><td><code>r0</code></td><td><code>bx lr</code> / <code>pop {pc}</code></td></tr>
+        <tr><td><b>MIPS</b></td><td>роутеры, IoT, старые приставки</td><td><code>$a0–$a3</code></td><td><code>$v0</code></td><td><code>jr $ra</code> (+ delay slot)</td></tr>
+        <tr><td><b>RISC-V</b></td><td>новые микроконтроллеры, платы</td><td><code>a0–a7</code></td><td><code>a0</code></td><td><code>ret</code></td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Порядок байтов (endianness)</h3>
+    <div class="prose"><p>Число <code>0x12345678</code> в памяти можно хранить с младшего байта (<b>little-endian</b>: x86, почти всегда ARM) или со старшего (<b>big-endian</b>: часть MIPS, PowerPC, сетевые протоколы). Если в hex-редакторе число «перевёрнуто» — это оно.</p></div>
+    <div class="card">
+      <label class="f" for="endIn">Введи число (десятичное или 0x…)</label>
+      <div class="row"><input type="text" id="endIn" value="0x12345678" style="max-width:280px" autocomplete="off" spellcheck="false">
+      <select id="endSize" style="max-width:150px" aria-label="Размер"><option value="2">16 бит</option><option value="4" selected>32 бита</option><option value="8">64 бита</option></select></div>
+      <div class="grid g2" style="margin-top:12px">
+        <div><div class="small muted">Little-endian (x86, ARM)</div><div class="bytes" id="endLE"></div></div>
+        <div><div class="small muted">Big-endian (сеть, PowerPC)</div><div class="bytes" id="endBE"></div></div>
+      </div>
+      <p class="small muted" style="margin:12px 0 0">Синим подсвечен младший байт. Адрес в памяти растёт слева направо.</p>
+    </div>
+  </div>
+</section>
+
+<!-- IDENTIFY -->
+<section id="identify" class="alt">
+  <div class="wrap">
+    <p class="eyebrow">03 · Неизвестный файл</p>
+    <h2>Что это за файл и под какой процессор?</h2>
+    <div class="prose">
+      <p>Первый вопрос с любым бинарником: формат, разрядность, архитектура. Ответ записан в заголовке файла. В терминале это делает <code>file имя</code>, а здесь — прямо в браузере. Файл никуда не загружается, всё читается локально.</p>
+    </div>
+    <div class="card">
+      <div class="row">
+        <label class="btn primary" for="fileIn" style="cursor:pointer">Выбрать файл</label>
+        <input type="file" id="fileIn" style="position:absolute;left:-9999px">
+        <span class="small muted">или пример:</span>
+        <button class="btn sm" data-sample="elfarm64">ELF ARM64</button>
+        <button class="btn sm" data-sample="elfx64">ELF x86-64</button>
+        <button class="btn sm" data-sample="pe64">Windows .exe</button>
+        <button class="btn sm" data-sample="macho">Mach-O</button>
+        <button class="btn sm" data-sample="dex">DEX</button>
+      </div>
+      <div style="margin-top:16px">
+        <label class="f" for="hexIn">Или вставь первые байты в hex</label>
+        <textarea id="hexIn" spellcheck="false" placeholder="7f 45 4c 46 02 01 01 00 ..."></textarea>
+      </div>
+      <div class="out" id="idOut" aria-live="polite"><span class="muted">Выбери файл или пример — здесь появится разбор заголовка.</span></div>
+    </div>
+    <h3>То же самое в терминале</h3>
+    <div class="code"><pre><span class="k">file</span> ./target                <span class="c"># формат, разрядность, архитектура, stripped или нет</span>
+<span class="k">readelf</span> -h ./target          <span class="c"># заголовок ELF подробно (поле Machine)</span>
+<span class="k">xxd</span> ./target | head        <span class="c"># сырые байты</span>
+<span class="k">strings</span> -n 6 ./target | less <span class="c"># читаемые строки: сообщения, URL, пароли</span></pre></div>
+  </div>
+</section>
+
+<!-- WORKFLOW -->
+<section id="workflow">
+  <div class="wrap">
+    <p class="eyebrow">04 · Процесс</p>
+    <h2>Как реверсить незнакомую программу</h2>
+    <div class="prose"><p>Не надо читать всё подряд. Ищи зацепки и иди от них. Отмечай шаги — прогресс сохранится в браузере.</p></div>
+    <div class="meter" aria-hidden="true"><i id="wfMeter"></i></div>
+    <p class="small muted" id="wfCount" aria-live="polite"></p>
+    <ul class="check" id="wfList"></ul>
+    <div class="callout warn"><div class="ic">⚠️</div><div><p><b>Частые ловушки новичка:</b> верить декомпилятору на 100% (он ошибается в типах), пытаться понять каждую функцию (90% — библиотечный код), забывать переименовывать (через час всё снова <code>FUN_…</code>).</p></div></div>
+  </div>
+</section>
+
+<!-- PHONE -->
+<section id="phone" class="alt">
+  <div class="wrap">
+    <p class="eyebrow">05 · Android</p>
+    <h2>Termux → proot Debian → Ghidra</h2>
+    <div class="prose">
+      <p><b>Termux</b> — терминал Linux на Android без root. <b>proot-distro</b> ставит внутрь полноценный Debian (тоже без root). В Debian запускаем <b>Ghidra</b>, а окно выводим через <b>Termux:X11</b>.</p>
+    </div>
+
+    <div class="grid g3" style="margin:24px 0">
+      <div class="card"><span class="tag">Минимум</span><h4>Телефон</h4><p>ARM64 (aarch64), Android 8+, от 6 ГБ RAM, 6–8 ГБ свободного места.</p></div>
+      <div class="card"><span class="tag">Желательно</span><h4>Удобство</h4><p>Bluetooth-клавиатура и мышь, или планшет. Ghidra рассчитана на большой экран.</p></div>
+      <div class="card"><span class="tag">Проверка</span><h4>Архитектура</h4><p>В Termux: <code>uname -m</code> → должно быть <code>aarch64</code>.</p></div>
+    </div>
+
+    <div class="callout risk"><div class="ic">❗</div><div>
+      <p><b>Главный нюанс:</b> в официальных релизах Ghidra нет нативных компонентов для <b>Linux ARM64</b> (только Windows и Linux x86-64). Без них не работает <b>декомпилятор</b>, самое ценное. Их нужно один раз собрать на телефоне — это шаг 7. Ghidra официально поддерживает Linux ARM64 с собранными пользователем нативными модулями.</p>
+    </div></div>
+
+    <div class="row" style="margin:24px 0 8px" role="group" aria-label="Легенда">
+      <span class="lg"><span class="where t">Termux</span><span class="small muted">обычный Termux</span></span>
+      <span class="lg"><span class="where d">Debian</span><span class="small muted">внутри proot Debian</span></span>
+      <span class="lg"><span class="where p">Телефон</span><span class="small muted">настройки Android</span></span>
+    </div>
+
+    <ol class="steps">
+      <li>
+        <h4>Поставь Termux из правильного места <span class="where p">Телефон</span></h4>
+        <p>Бери Termux с <a href="https://f-droid.org/packages/com.termux/" rel="noopener">F-Droid</a> или с <a href="https://github.com/termux/termux-app/releases" rel="noopener">GitHub</a>. Версия из Google Play долго была устаревшей и ограниченной. Плюс поставь приложение <a href="https://github.com/termux/termux-x11/releases/tag/nightly" rel="noopener">Termux:X11</a> (<code>termux-x11-universal-debug.apk</code> или <code>arm64-v8a</code>).</p>
+        <p class="small muted">Не смешивай источники: Termux и его плагины должны быть из одного источника, иначе подписи не совпадут.</p>
+      </li>
+      <li>
+        <h4>Отключи убийцу фоновых процессов <span class="where p">Телефон</span></h4>
+        <p>С Android 12 система убивает «лишние» дочерние процессы. Тяжёлая сборка или Ghidra внезапно падают с <code>[Process completed (signal 9)]</code>.</p>
+        <ul>
+          <li><b>Android 14+:</b> Настройки → Для разработчиков → «Отключить ограничения дочерних процессов» (Disable child process restrictions).</li>
+          <li><b>Android 12–13:</b> с компьютера через ADB:</li>
+        </ul>
+        <div class="code"><pre>adb shell "/system/bin/device_config set_sync_disabled_for_tests persistent"
+adb shell "/system/bin/device_config put activity_manager max_phantom_processes 2147483647"</pre></div>
+        <p class="small muted">Ещё: отключи оптимизацию батареи для Termux и держи wake lock (в уведомлении Termux → Acquire wakelock).</p>
+      </li>
+      <li>
+        <h4>Обнови Termux и поставь proot-distro <span class="where t">Termux</span></h4>
+        <div class="code"><pre>pkg update && pkg upgrade -y
+pkg install -y proot-distro x11-repo
+pkg install -y termux-x11-nightly
+termux-setup-storage   <span class="c"># доступ к /sdcard (по желанию)</span></pre></div>
+      </li>
+      <li>
+        <h4>Установи Debian и зайди в него <span class="where t">Termux</span></h4>
+        <div class="code"><pre>proot-distro install debian
+proot-distro login debian --shared-tmp</pre></div>
+        <p class="small muted"><code>--shared-tmp</code> пробрасывает <code>/tmp</code> Termux внутрь — через него Debian рисует окна в Termux:X11. Выйти из Debian: <code>exit</code>.</p>
+      </li>
+      <li>
+        <h4>Поставь Java, сборщики и лёгкий рабочий стол <span class="where d">Debian</span></h4>
+        <div class="code"><pre>apt update && apt upgrade -y
+apt install -y openjdk-21-jdk build-essential unzip wget curl git python3 \
+               xfce4 dbus-x11 binutils file gdb
+java -version</pre></div>
+        <p class="small muted">XFCE можно заменить на что-то легче (<code>openbox</code>), но с XFCE проще.</p>
+      </li>
+      <li>
+        <h4>Скачай Ghidra и проверь нужную Java <span class="where d">Debian</span></h4>
+        <div class="code"><pre>cd ~
+URL=$(curl -s https://api.github.com/repos/NationalSecurityAgency/ghidra/releases/latest \
+      | grep -o 'https://[^"]*_PUBLIC_[^"]*\.zip' | head -1)
+echo "$URL"
+wget -O ghidra.zip "$URL" && unzip -q ghidra.zip && rm ghidra.zip
+cd ~/ghidra_*_PUBLIC
+grep java.min Ghidra/application.properties   <span class="c"># какая минимальная Java</span></pre></div>
+        <div class="callout warn"><div class="ic">☕</div><div><p>Ghidra 12.0/12.1 требует <b>JDK 21</b>, а в документации ветки 12.2 уже <b>JDK 25</b>. Если <code>java.min</code> больше, чем показал <code>java -version</code>, поставь новее: <code>apt install openjdk-25-jdk</code> (если есть в репозитории) или скачай Temurin для <b>aarch64 Linux</b> с <a href="https://adoptium.net/temurin/releases" rel="noopener">adoptium.net</a> и пропиши <code>JAVA_HOME</code>.</p></div></div>
+      </li>
+      <li>
+        <h4>Собери нативные модули (декомпилятор) <span class="where d">Debian</span></h4>
+        <div class="code"><pre>cd ~/ghidra_*_PUBLIC/support/gradle
+./gradlew buildNatives     <span class="c"># нужен интернет: wrapper скачает Gradle</span></pre></div>
+        <p>Идёт долго (десятки минут), телефон греется. Держи Termux на экране и на зарядке. В итоге в модулях появятся папки <code>build/os/linux_arm_64/</code>, и Ghidra будет брать бинарники оттуда.</p>
+        <details><summary>Сборка упала — что проверить</summary><div class="db">
+          <ul>
+            <li><code>signal 9</code> / процесс исчез — вернись к шагу 2 и закрой другие приложения.</li>
+            <li>Не хватает памяти — закрой всё, перезапусти Termux, запусти сборку заново (готовое не пересобирается).</li>
+            <li>Не находит компилятор — проверь <code>gcc --version</code> и <code>make --version</code>; на старых версиях Ghidra помогала установка <code>clang</code>.</li>
+            <li>Ошибка версии Gradle/Java — нужна Java не ниже <code>java.min</code> из шага 6.</li>
+          </ul>
+        </div></details>
+      </li>
+      <li>
+        <h4>Дай Ghidra памяти, но не всю <span class="where d">Debian</span></h4>
+        <p>В скрипте <code>ghidraRun</code> есть строка <code>MAXMEM</code> — это предел памяти для Java. Правило: не больше половины RAM телефона, иначе Android убьёт Termux. На 8 ГБ ставь <code>MAXMEM=3G</code>.</p>
+        <div class="code"><pre>nano ~/ghidra_*_PUBLIC/ghidraRun   <span class="c"># MAXMEM=3G</span></pre></div>
+      </li>
+      <li>
+        <h4>Запусти рабочий стол <span class="where t">Termux</span></h4>
+        <p>Выйди из Debian (<code>exit</code>) и создай скрипт запуска:</p>
+        <div class="code"><pre>cat > ~/re.sh <<'X'
+termux-x11 :0 >/dev/null 2>&1 &
+sleep 3
+proot-distro login debian --shared-tmp -- bash -c \
+  "export DISPLAY=:0; dbus-launch --exit-with-session startxfce4"
+X
+chmod +x ~/re.sh && ~/re.sh</pre></div>
+        <p>Открой приложение <b>Termux:X11</b> — там рабочий стол XFCE.</p>
+      </li>
+      <li>
+        <h4>Запусти Ghidra <span class="where d">Debian</span></h4>
+        <p>В XFCE открой терминал:</p>
+        <div class="code"><pre>~/ghidra_*_PUBLIC/ghidraRun</pre></div>
+        <p class="small muted">Мелкий интерфейс? Edit → Tool Options → Theme → шрифт крупнее. Или в настройках Termux:X11 уменьши разрешение (Display resolution mode → scaled).</p>
+      </li>
+    </ol>
+
+    <h3>Без графики: headless-режим</h3>
+    <div class="prose"><p>Если GUI тормозит, Ghidra умеет анализировать из командной строки. Проект потом можно открыть на ПК.</p></div>
+    <div class="code"><pre>mkdir -p ~/projects
+~/ghidra_*_PUBLIC/support/analyzeHeadless ~/projects MyProj \
+    -import ~/target.bin -overwrite</pre></div>
+
+    <h3>Нюансы, о которые спотыкаются</h3>
+    <details><summary>proot — это не настоящий Linux и не виртуалка</summary><div class="db"><p>proot подменяет системные вызовы через <code>ptrace</code>. Поэтому всё медленнее, нет systemd, а отладчики (<code>gdb</code>, <code>strace</code>) внутри proot часто работают нестабильно — им самим нужен <code>ptrace</code>. Для отладки ARM-бинарников удобнее ставить <code>gdb</code> прямо в Termux (<code>pkg install gdb</code>).</p></div></details>
+    <details><summary>Где хранить файлы</summary><div class="db"><p>Держи Ghidra и проекты в домашней папке Debian, а не на <code>/sdcard</code>: внешняя память не поддерживает права и симлинки Linux. Передать файл в Debian: положи в Termux <code>~/</code> и скопируй, или запускай Debian с <code>--shared-home</code>. Из Termux: <code>proot-distro copy</code>.</p></div></details>
+    <details><summary>Запуск x86-программ на телефоне</summary><div class="db"><p>ARM64-телефон не исполняет x86-код напрямую. Анализировать статически x86-файлы в Ghidra можно (ей не важно, под какой CPU файл). А запускать для динамики нужно эмулятором <code>qemu-user</code> (<code>apt install qemu-user</code>) — медленно, но работает для простых Linux-бинарников.</p></div></details>
+    <details><summary>Лёгкие альтернативы Ghidra прямо в Termux</summary><div class="db"><ul>
+      <li><code>pkg install radare2</code> — консольный дизассемблер, летает даже на слабом телефоне.</li>
+      <li><code>pkg install binutils file</code> — <code>readelf</code>, <code>objdump</code>, <code>strings</code>, <code>file</code>.</li>
+      <li><b>jadx</b> (релиз с GitHub, нужна Java) — для APK. Для Android-приложений это первый инструмент, а не Ghidra.</li>
+    </ul></div></details>
+    <details><summary>Сбросить всё и начать заново</summary><div class="db"><div class="code"><pre>proot-distro reset debian    <span class="c"># переустановить с нуля</span>
+proot-distro remove debian   <span class="c"># удалить совсем</span></pre></div></div></details>
+  </div>
+</section>
+
+<!-- GHIDRA -->
+<section id="ghidra">
+  <div class="wrap">
+    <p class="eyebrow">06 · Ghidra</p>
+    <h2>Первые 15 минут в Ghidra</h2>
+    <div class="grid g2" style="margin-top:24px">
+      <div>
+        <ol>
+          <li><b>File → New Project</b> → Non-Shared → имя проекта.</li>
+          <li><b>File → Import File</b> → выбери бинарник. Ghidra сама определит формат и архитектуру (проверь поле <i>Language</i>).</li>
+          <li>Двойной клик по файлу → на вопрос <i>Analyze?</i> жми <b>Yes</b> → <b>Analyze</b> с настройками по умолчанию.</li>
+          <li>Слева <b>Symbol Tree → Functions</b>: ищи <code>main</code> или <code>entry</code>.</li>
+          <li><b>Search → For Strings</b>: найди интересную строку («Wrong password», URL) → двойной клик → по ссылке XREF прыгни в код, который её использует.</li>
+          <li>Справа окно <b>Decompile</b> — псевдо-C. Переименовывай и комментируй всё, что понял.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h4>Окна, которые нужны</h4>
+        <ul class="small" style="margin:8px 0 0">
+          <li><b>Listing</b> — ассемблер с адресами.</li>
+          <li><b>Decompile</b> — псевдокод на C.</li>
+          <li><b>Symbol Tree</b> — функции, импорты, экспорты.</li>
+          <li><b>Defined Strings</b> — все строки.</li>
+          <li><b>Function Graph</b> — блок-схема функции (Window → Function Graph).</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Горячие клавиши</h3>
+    <div class="row" style="margin-bottom:12px">
+      <input type="text" id="keyFilter" placeholder="Поиск: переименовать, тип, комментарий…" aria-label="Поиск по горячим клавишам" style="max-width:420px;font-family:var(--sans)">
+    </div>
+    <div class="tbl"><table style="min-width:0">
+      <thead><tr><th style="width:150px">Клавиша</th><th>Что делает</th></tr></thead>
+      <tbody id="keyBody"></tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- PRACTICE -->
+<section id="practice" class="alt">
+  <div class="wrap">
+    <p class="eyebrow">07 · Практика</p>
+    <h2>Мини-крякми: найди пароль</h2>
+    <div class="prose"><p>Это вывод декомпилятора Ghidra из выдуманной программы. Функцию уже переименовали. Пойми логику и найди пароль. Всё, что нужно, есть в коде.</p></div>
+    <div class="code"><pre><span class="k">int</span> check_password(<span class="k">char</span> *input)
+{
+  <span class="k">byte</span> key[6] = { <span class="hl">0x25, 0x2a, 0x2b, 0x26, 0x30, 0x23</span> };
+  <span class="k">int</span> i;
+
+  <span class="k">if</span> (strlen(input) != <span class="hl">6</span>) <span class="k">return</span> 0;
+  <span class="k">for</span> (i = 0; i < 6; i++) {
+    <span class="k">if</span> ((input[i] ^ <span class="hl">0x42</span>) != key[i]) <span class="k">return</span> 0;
+  }
+  <span class="k">return</span> 1;
+}</pre></div>
+    <div class="grid g2">
+      <div class="card">
+        <label class="f" for="pwIn">Твой ответ</label>
+        <div class="row"><input type="text" id="pwIn" autocomplete="off" spellcheck="false" style="flex:1;min-width:160px"><button class="btn primary" id="pwBtn">Проверить</button></div>
+        <div class="msg" id="pwMsg" aria-live="polite"></div>
+        <div style="margin-top:12px">
+          <details><summary>Подсказка 1</summary><div class="db"><p>Символ подходит, если <code>input[i] XOR 0x42 == key[i]</code>. XOR обратим: <code>a ^ b ^ b = a</code>.</p></div></details>
+          <details><summary>Подсказка 2</summary><div class="db"><p>Значит <code>input[i] = key[i] ^ 0x42</code>. Посчитай для каждого байта в калькуляторе справа и переведи в ASCII.</p></div></details>
+        </div>
+      </div>
+      <div class="card">
+        <h4>XOR-калькулятор</h4>
+        <p style="margin-bottom:12px">Байты через пробел или запятую, ключ — один байт.</p>
+        <label class="f" for="xBytes">Байты</label>
+        <input type="text" id="xBytes" value="0x25 0x2a" spellcheck="false" autocomplete="off">
+        <label class="f" for="xKey" style="margin-top:10px">Ключ</label>
+        <input type="text" id="xKey" value="0x42" spellcheck="false" autocomplete="off">
+        <div class="out" id="xOut" style="font-family:var(--mono)"></div>
+      </div>
+    </div>
+    <div class="callout info"><div class="ic">🧩</div><div><p>Дальше тренируйся на настоящих задачах: <a href="https://crackmes.one" rel="noopener">crackmes.one</a>, <a href="https://picoctf.org" rel="noopener">picoCTF</a> (раздел Reverse Engineering), <a href="https://microcorruption.com" rel="noopener">Microcorruption</a>. Начинай с уровней сложности 1–2.</p></div></div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section id="quiz">
+  <div class="wrap">
+    <p class="eyebrow">08 · Проверь себя</p>
+    <h2>Мини-тест</h2>
+    <div class="prose" id="quizBox"></div>
+    <p class="msg" id="quizScore" aria-live="polite"></p>
+  </div>
+</section>
+
+<!-- LINKS -->
+<section id="links" class="alt">
+  <div class="wrap">
+    <p class="eyebrow">09 · Дальше</p>
+    <h2>Что читать и где учиться</h2>
+    <ul class="reslist">
+      <li><a href="https://github.com/NationalSecurityAgency/ghidra" rel="noopener">Ghidra на GitHub</a> — релизы и GettingStarted</li>
+      <li><a href="https://ghidra.re/ghidra_docs/GhidraClass/Beginner/Introduction_to_Ghidra_Student_Guide.html" rel="noopener">Introduction to Ghidra</a> — официальный курс для новичков</li>
+      <li><a href="https://wrongbaud.github.io/posts/ghidra-training/" rel="noopener">wrongbaud: Ghidra training</a> — бесплатный курс с упражнениями</li>
+      <li><a href="https://github.com/termux/proot-distro" rel="noopener">proot-distro</a> — документация</li>
+      <li><a href="https://github.com/termux/termux-x11" rel="noopener">Termux:X11</a> — X-сервер для Android</li>
+      <li><a href="https://github.com/LinuxDroidMaster/Termux-Desktops" rel="noopener">Termux-Desktops</a> — гайды по рабочим столам в proot</li>
+      <li><a href="https://beginners.re/" rel="noopener">«Reverse Engineering для начинающих»</a> — книга Дениса Юричева (есть на русском)</li>
+      <li><a href="https://godbolt.org" rel="noopener">Compiler Explorer</a> — смотри, во что компилируется твой C-код под любую архитектуру</li>
+      <li><a href="https://github.com/skylot/jadx" rel="noopener">jadx</a> — декомпилятор APK/DEX</li>
+      <li><a href="https://rada.re/n/" rel="noopener">radare2</a> — консольный фреймворк, работает в Termux</li>
+    </ul>
+  </div>
+</section>
+</main>
+
+<footer><div class="wrap">Сделано для обучения. Реверсь только то, на что у тебя есть право. · Один HTML-файл, без внешних зависимостей — кидай в GitHub Pages как <code>index.html</code>.</div></footer>
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hx=(n,w=2)=>n.toString(16).toUpperCase().padStart(w,'0');
+
+/* ---------- pipeline ---------- */
+const P=[
+ {code:`<span class="c">// main.c</span>
+<span class="k">#include</span> &lt;stdio.h&gt;
+<span class="k">#include</span> &lt;string.h&gt;
+
+<span class="c">// проверяем пароль</span>
+<span class="k">int</span> check_password(<span class="k">const char</span> *pw) {
+    <span class="k">return</span> strcmp(pw, <span class="hl">"s3cret"</span>) == 0;
+}`,note:'Есть всё: имена функций и переменных, типы, комментарии, структура.',lost:[]},
+ {code:`<span class="c">; gcc -O1 -S, x86-64</span>
+check_password:
+    sub     rsp, 8
+    lea     rsi, [rip + .LC0]   <span class="c">; адрес строки "s3cret"</span>
+    call    strcmp
+    test    eax, eax
+    sete    al
+    movzx   eax, al
+    add     rsp, 8
+    ret`,note:'Комментарии исчезли, типы превратились в регистры. Имя функции пока есть.',lost:['комментарии','типы']},
+ {code:`<span class="c">Адрес     Байты                  </span>
+00101189  48 83 EC 08
+0010118D  48 8D 35 70 0E 00 00
+00101194  E8 B7 FE FF FF
+00101199  85 C0
+0010119B  0F 94 C0
+0010119E  0F B6 C0
+001011A1  48 83 C4 08
+001011A5  C3`,note:'После strip остались только байты и адреса. Строка "s3cret" лежит отдельно, в .rodata. Имя strcmp — в таблице импортов: библиотечные имена не стираются.',lost:['комментарии','типы','имена функций','имена переменных']},
+ {code:`<span class="c">/* Ghidra: Decompile */</span>
+<span class="k">bool</span> FUN_00101189(<span class="k">char</span> *param_1)
+{
+  <span class="k">int</span> iVar1;
+
+  iVar1 = strcmp(param_1, <span class="hl">"s3cret"</span>);
+  <span class="k">return</span> iVar1 == 0;
+}`,note:'Ghidra восстановила логику и строку, но имена приходится давать самому: FUN_00101189 → check_password.',lost:['комментарии','имена функций','имена переменных']}
+];
+const allLost=['комментарии','типы','имена функций','имена переменных'];
+function pipe(i){
+  $$('.pipe button').forEach((b,j)=>b.setAttribute('aria-pressed',j===i));
+  $('#pipeCode').innerHTML=P[i].code; $('#pipeNote').textContent=P[i].note;
+  $('#pipeLost').innerHTML=allLost.map(x=>`<span class="${P[i].lost.includes(x)?'gone':''}">${x}</span>`).join('');
+}
+$$('.pipe button').forEach(b=>b.onclick=()=>pipe(+b.dataset.step)); pipe(0);
+
+/* ---------- arch tabs ---------- */
+const A=[
+ ['x86-64',`<span class="c">; Linux System V: a → edi, b → esi</span>
+add:
+    lea   eax, [rdi + rsi]   <span class="c">; eax = a + b (хитрый трюк через lea)</span>
+    ret`,'CISC: инструкции разной длины (1–15 байт). Компиляторы любят <code>lea</code> для арифметики. Синтаксис Intel: <code>куда, откуда</code>.'],
+ ['x86 (32)',`<span class="c">; cdecl: аргументы на стеке</span>
+add:
+    mov   eax, [esp + 4]     <span class="c">; a</span>
+    add   eax, [esp + 8]     <span class="c">; + b</span>
+    ret`,'Аргументы через стек, а не через регистры. Встречается в старых Windows-программах и играх.'],
+ ['ARM64',`<span class="c">; AAPCS64: a → w0, b → w1</span>
+add:
+    add   w0, w0, w1         <span class="c">; w0 = w0 + w1</span>
+    ret                      <span class="c">; прыжок по адресу из x30 (LR)</span>`,'RISC: каждая инструкция ровно 4 байта. Три операнда: <code>куда, первый, второй</code>. Это архитектура твоего телефона.'],
+ ['ARM32',`<span class="c">; a → r0, b → r1</span>
+add:
+    add   r0, r0, r1
+    bx    lr                 <span class="c">; возврат по link register</span>`,'Есть два режима: ARM (4 байта) и Thumb (2/4 байта). Если Ghidra показывает мусор — возможно, перепутан режим: выдели код → Ctrl+R → регистр TMode = 1.'],
+ ['MIPS',`<span class="c">; a → $a0, b → $a1</span>
+add:
+    jr    $ra                <span class="c">; возврат...</span>
+    addu  $v0, $a0, $a1      <span class="c">; ...но ЭТА строка выполнится раньше!</span>`,'<b>Delay slot:</b> инструкция после перехода выполняется до него. Классическая ловушка при чтении кода роутеров.'],
+ ['RISC-V',`<span class="c">; a → a0, b → a1</span>
+add:
+    addw  a0, a0, a1
+    ret`,'Открытая архитектура, похожа на MIPS без его странностей. Становится всё популярнее в микроконтроллерах.']
+];
+const tabs=$('#archTabs');
+A.forEach((a,i)=>{const b=document.createElement('button');b.role='tab';b.textContent=a[0];b.id='at'+i;b.onclick=()=>arch(i);
+ b.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const n=(i+(e.key==='ArrowRight'?1:A.length-1))%A.length;arch(n);$('#at'+n).focus();}};tabs.appendChild(b);});
+function arch(i){$$('#archTabs button').forEach((b,j)=>{b.setAttribute('aria-selected',j===i);b.tabIndex=j===i?0:-1});
+ $('#archPanel').innerHTML=`<div class="code"><pre>${A[i][1]}</pre></div><p class="muted">${A[i][2]}</p>`;}
+arch(0);
+
+/* ---------- endianness ---------- */
+function endian(){
+  const sz=+$('#endSize').value; let v; const raw=$('#endIn').value.trim().replace(/_/g,'');
+  try{ v=BigInt(raw); }catch(e){ $('#endLE').innerHTML=$('#endBE').innerHTML='<span class="small" style="background:none">Не похоже на число</span>'; return; }
+  const mask=(1n<<BigInt(sz*8))-1n; v=((v%(mask+1n))+(mask+1n))%(mask+1n);
+  const b=[]; for(let i=0;i<sz;i++){ b.push(Number((v>>BigInt(8*i))&255n)); }
+  $('#endLE').innerHTML=b.map((x,i)=>`<span class="${i===0?'lsb':''}">${hx(x)}</span>`).join('');
+  $('#endBE').innerHTML=b.slice().reverse().map((x,i)=>`<span class="${i===sz-1?'lsb':''}">${hx(x)}</span>`).join('');
+}
+$('#endIn').oninput=endian; $('#endSize').onchange=endian; endian();
+
+/* ---------- file identifier ---------- */
+const ELFM={0x02:'SPARC',0x03:'x86 (i386)',0x08:'MIPS',0x14:'PowerPC',0x15:'PowerPC64',0x16:'S390',0x28:'ARM (32-бит)',0x2A:'SuperH',0x32:'IA-64',0x3E:'x86-64',0x53:'AVR',0xB7:'ARM64 (AArch64)',0xF3:'RISC-V',0x102:'LoongArch'};
+const ELFT={1:'объектный файл (.o)',2:'исполняемый (не PIE)',3:'PIE-исполняемый или библиотека .so',4:'core dump'};
+const PEM={0x14C:'x86 (i386)',0x8664:'x86-64',0x1C0:'ARM',0x1C4:'ARMv7 Thumb-2',0xAA64:'ARM64',0x200:'IA-64'};
+const MACM={7:'x86',0x01000007:'x86-64',12:'ARM',0x0100000C:'ARM64',0x0200000C:'ARM64_32',18:'PowerPC'};
+const MACT={1:'объектный файл',2:'исполняемый',6:'библиотека .dylib',8:'bundle'};
+function u16(b,o,le){return le?b[o]|b[o+1]<<8:b[o]<<8|b[o+1];}
+function u32(b,o,le){return (le?(b[o]|b[o+1]<<8|b[o+2]<<16|b[o+3]<<24):(b[o]<<24|b[o+1]<<16|b[o+2]<<8|b[o+3]))>>>0;}
+function analyze(b,name){
+  const r=[]; let fmt='Неизвестно',tool='',note='';
+  const S=(o,s)=>[...s].every((c,i)=>b[o+i]===c.charCodeAt(0));
+  if(b.length<4){return show([['Ошибка','Слишком мало байтов']]);}
+  if(b[0]===0x7F&&S(1,'ELF')){
+    const c64=b[4]===2, le=b[5]!==2, m=u16(b,0x12,le), t=u16(b,0x10,le);
+    fmt='ELF (Linux / Android / Unix)';
+    r.push(['Разрядность',c64?'64-бит':'32-бит'],['Порядок байтов',le?'little-endian':'big-endian'],['Архитектура',ELFM[m]||('неизвестная, e_machine = 0x'+hx(m,4))],['Тип',ELFT[t]||('0x'+hx(t,4))]);
+    tool='Ghidra, radare2, readelf -h, objdump -d';
+    if(m===0xB7) note='Родная архитектура телефона: можно запускать прямо в Termux.';
+    else if(m===0x3E||m===0x03) note='На ARM-телефоне запускать только через qemu-user. Статически в Ghidra — без проблем.';
+  } else if(S(0,'MZ')){
+    fmt='DOS/Windows'; let pe=b.length>=0x40?u32(b,0x3C,true):0;
+    if(pe&&pe+6<=b.length&&S(pe,'PE\0\0')){
+      const m=u16(b,pe+4,true), ch=u16(b,pe+22,true), opt=pe+24, mg=b.length>opt+2?u16(b,opt,true):0;
+      fmt='PE — Windows '+((ch&0x2000)?'DLL':'EXE');
+      r.push(['Архитектура',PEM[m]||('0x'+hx(m,4))],['Разрядность',mg===0x20B?'64-бит (PE32+)':mg===0x10B?'32-бит (PE32)':'—']);
+      const sub=b.length>opt+70?u16(b,opt+68,true):0;
+      if(sub) r.push(['Подсистема',{2:'GUI (окна)',3:'консоль',1:'драйвер / native'}[sub]||sub]);
+      const dd=opt+(mg===0x20B?112:96)+14*8;
+      if(b.length>=dd+8&&u32(b,dd,true)>0){fmt+=' (.NET)';note='Это .NET-сборка: открывай в dnSpyEx или ILSpy — получишь почти исходный C#.';}
+      tool='Ghidra, x64dbg, PE-bear';
+    } else { r.push(['Заголовок PE','не найден в загруженных байтах']); }
+  } else if([0xFEEDFACE,0xFEEDFACF,0xCEFAEDFE,0xCFFAEDFE].includes(u32(b,0,false))){
+    const mg=u32(b,0,false), le=mg===0xCEFAEDFE||mg===0xCFFAEDFE, c=u32(b,4,le), t=u32(b,12,le);
+    fmt='Mach-O (macOS / iOS)';
+    r.push(['Разрядность',(mg===0xFEEDFACF||mg===0xCFFAEDFE)?'64-бит':'32-бит'],['Архитектура',MACM[c]||('0x'+hx(c,8))],['Тип',MACT[t]||t]);
+    tool='Ghidra, otool, Hopper';
+  } else if(u32(b,0,false)===0xCAFEBABE){
+    const n=u32(b,4,false);
+    if(n>0&&n<40){fmt='Mach-O Universal (несколько архитектур)';r.push(['Архитектур внутри',n]);tool='lipo -info, Ghidra';}
+    else{fmt='Java .class';r.push(['Версия класса',u16(b,6,false)]);tool='jadx, JD-GUI, CFR';note='Байткод Java декомпилируется почти до исходника.';}
+  } else if(S(0,'dex\n')){
+    fmt='Android DEX (байткод Dalvik)'; r.push(['Версия DEX',String.fromCharCode(b[4],b[5],b[6])]); tool='jadx, apktool';
+    note='Это не машинный код, а байткод: jadx покажет почти исходный Java/Kotlin.';
+  } else if(S(0,'PK\x03\x04')){
+    fmt='ZIP-архив (APK, JAR, IPA, DOCX…)'; tool='unzip -l, jadx для APK';
+    note='APK — это ZIP. Внутри classes.dex (Java/Kotlin) и lib/<abi>/*.so (нативный код для Ghidra).';
+  } else if(S(0,'#!')){ fmt='Скрипт (shebang)'; tool='любой текстовый редактор'; note='Это не бинарник — его можно просто прочитать.'; }
+  else if(S(0,'\x00asm')){ fmt='WebAssembly'; tool='Ghidra с плагином, wabt (wasm2wat)'; }
+  else { note='Сигнатура не распознана. Может быть прошивка, упакованный или зашифрованный файл. Попробуй binwalk и strings.'; }
+  const rows=[['Формат',fmt]].concat(r); if(tool) rows.push(['Чем открыть',tool]);
+  show(rows,note,name,b);
+}
+function show(rows,note,name,b){
+  let h=name?`<p class="small muted" style="margin:0 0 10px">${esc(name)}</p>`:'';
+  h+='<dl class="kv">'+rows.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')+'</dl>';
+  if(note) h+=`<p class="small" style="margin:12px 0 0">💡 ${esc(note)}</p>`;
+  if(b) h+=`<p class="small muted" style="margin:12px 0 0;font-family:var(--mono);word-break:break-all">${[...b.slice(0,16)].map(x=>hx(x)).join(' ')}${b.length>16?' …':''}</p>`;
+  $('#idOut').innerHTML=h;
+}
+function hexToBytes(s){const t=s.replace(/0x/gi,'').replace(/[^0-9a-f]/gi,'');const o=[];for(let i=0;i+1<t.length;i+=2)o.push(parseInt(t.substr(i,2),16));return new Uint8Array(o);}
+function bytesToHex(b){return [...b].map(x=>hx(x).toLowerCase()).join(' ');}
+const SAMPLES={
+  elfarm64:()=>{const b=new Uint8Array(64);b.set([0x7f,0x45,0x4c,0x46,2,1,1,0]);b[0x10]=3;b[0x12]=0xB7;b[0x14]=1;return b;},
+  elfx64:()=>{const b=new Uint8Array(64);b.set([0x7f,0x45,0x4c,0x46,2,1,1,0]);b[0x10]=3;b[0x12]=0x3E;b[0x14]=1;return b;},
+  pe64:()=>{const b=new Uint8Array(0x40+24+240);b[0]=0x4D;b[1]=0x5A;b[0x3C]=0x40;b.set([0x50,0x45,0,0,0x64,0x86],0x40);b[0x40+22]=0x22;b[0x40+24]=0x0B;b[0x40+25]=2;b[0x40+24+68]=3;return b;},
+  macho:()=>{const b=new Uint8Array(32);b.set([0xCF,0xFA,0xED,0xFE,0x0C,0,0,1,0,0,0,0,2,0,0,0]);return b;},
+  dex:()=>{const b=new Uint8Array(32);b.set([0x64,0x65,0x78,0x0a,0x30,0x33,0x35,0]);return b;}
+};
+$$('[data-sample]').forEach(btn=>btn.onclick=()=>{const b=SAMPLES[btn.dataset.sample]();$('#hexIn').value=bytesToHex(b.slice(0,64));analyze(b,'Пример: '+btn.textContent);});
+$('#hexIn').oninput=()=>{const b=hexToBytes($('#hexIn').value);if(b.length)analyze(b);};
+$('#fileIn').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{const b=new Uint8Array(rd.result);$('#hexIn').value=bytesToHex(b.slice(0,64));analyze(b,f.name+' · '+(f.size/1024).toFixed(1)+' КБ');};
+  rd.readAsArrayBuffer(f.slice(0,65536));};
+
+/* ---------- workflow checklist ---------- */
+const WF=[
+ ['Сформулируй цель','Что именно хочешь узнать: где проверка пароля, куда шлются данные, как работает формат файла.'],
+ ['Изолируй','Чужие файлы — в отдельной среде: виртуалка, отдельный proot, без важных данных и аккаунтов.'],
+ ['Определи формат и архитектуру','file, readelf -h или определитель выше. От этого зависят инструменты.'],
+ ['Проверь упаковку и защиту','Мало строк и импортов + высокая энтропия = упакован (UPX: upx -d). checksec покажет PIE, NX, canary.'],
+ ['Собери строки и импорты','strings, Defined Strings в Ghidra. Сообщения об ошибках и вызовы API — лучшие зацепки.'],
+ ['Загрузи в Ghidra и проанализируй','Import → Analyze с настройками по умолчанию.'],
+ ['Иди от зацепки по XREF','Строка «Wrong password» → кто её использует → какое условие ведёт к ней.'],
+ ['Переименовывай и комментируй','L — имя, ; — комментарий, Ctrl+L — тип. Код постепенно становится читаемым.'],
+ ['Проверь гипотезу динамически','Поставь точку останова в gdb, посмотри реальные значения регистров и памяти.'],
+ ['Запиши выводы','Что нашёл, адреса ключевых функций, как воспроизвести. Через неделю скажешь себе спасибо.']
+];
+const KEY='rev0-wf'; let st=JSON.parse(localStorage.getItem(KEY)||'[]');
+function wf(){
+  $('#wfList').innerHTML=WF.map((w,i)=>`<li class="${st[i]?'done':''}"><label><input type="checkbox" data-i="${i}" ${st[i]?'checked':''}><span><b>${i+1}. ${esc(w[0])}</b><span class="muted">${esc(w[1])}</span></span></label></li>`).join('');
+  const n=st.filter(Boolean).length; $('#wfMeter').style.width=(n/WF.length*100)+'%'; $('#wfCount').textContent=`Готово ${n} из ${WF.length}`;
+  $$('#wfList input').forEach(c=>c.onchange=()=>{st[+c.dataset.i]=c.checked;localStorage.setItem(KEY,JSON.stringify(st));wf();$(`#wfList input[data-i="${c.dataset.i}"]`).focus();});
+}
+wf();
+
+/* ---------- hotkeys ---------- */
+const K=[['L','Переименовать функцию, метку или переменную','rename имя'],[';','Комментарий к строке в Listing','comment'],['Ctrl + L','Сменить тип переменной (в Decompile)','retype тип'],
+ ['G','Перейти по адресу или имени','go to адрес'],['Ctrl + Shift + F','Показать, кто ссылается сюда (XREF)','references ссылки xref'],['Alt + ←','Назад по истории переходов','back назад'],
+ ['D','Дизассемблировать байты как код','disassemble код'],['C','Убрать разметку (снова сырые байты)','clear очистить'],['F','Создать функцию с этого адреса','function функция'],
+ ['T','Выбрать тип данных для байтов','type тип данные'],['B / P','Пометить как байт / указатель','byte pointer указатель'],['S','Поиск по памяти (байты, строки)','search поиск'],
+ ['Средняя кнопка мыши','Подсветить все вхождения переменной','highlight подсветка']];
+function keys(){const q=$('#keyFilter').value.toLowerCase().trim();
+ const f=K.filter(k=>!q||(k.join(' ')).toLowerCase().includes(q));
+ $('#keyBody').innerHTML=f.length?f.map(k=>`<tr><td><kbd>${esc(k[0])}</kbd></td><td>${esc(k[1])}</td></tr>`).join(''):'<tr><td colspan="2" class="muted">Ничего не найдено</td></tr>';}
+$('#keyFilter').oninput=keys; keys();
+
+/* ---------- crackme ---------- */
+const KB=[0x25,0x2a,0x2b,0x26,0x30,0x23];
+$('#pwBtn').onclick=()=>{const v=$('#pwIn').value; const ok=v.length===6&&[...v].every((c,i)=>(c.charCodeAt(0)^0x42)===KB[i]);
+ const m=$('#pwMsg'); m.className='msg '+(ok?'okk':'bad');
+ m.textContent=ok?'✓ Верно! Ты только что сделал реверс: прочитал алгоритм и обратил его.':(v.length!==6?'✗ Длина должна быть 6 — посмотри на strlen.':'✗ Не то. Какой-то символ не проходит XOR-проверку.');};
+$('#pwIn').onkeydown=e=>{if(e.key==='Enter')$('#pwBtn').click();};
+function xorc(){const bs=$('#xBytes').value.split(/[\s,]+/).filter(Boolean).map(x=>parseInt(x,x.toLowerCase().startsWith('0x')?16:(/[a-f]/i.test(x)?16:10)));
+ const k=parseInt($('#xKey').value,$('#xKey').value.toLowerCase().startsWith('0x')?16:10);
+ if(bs.some(isNaN)||isNaN(k)){$('#xOut').textContent='Проверь ввод';return;}
+ $('#xOut').innerHTML=bs.map(b=>{const r=(b^k)&255;return `${'0x'+hx(b&255).toLowerCase()} ^ ${'0x'+hx(k&255).toLowerCase()} = 0x${hx(r).toLowerCase()} → '${r>=32&&r<127?esc(String.fromCharCode(r)):'·'}'`;}).join('<br>');}
+$('#xBytes').oninput=xorc;$('#xKey').oninput=xorc;xorc();
+
+/* ---------- quiz ---------- */
+const Q=[
+ ['Файл начинается с байтов 7F 45 4C 46. Что это?',['Windows .exe','ELF — Linux/Android','APK'],1,'«\\x7FELF» — сигнатура ELF. У .exe — «MZ», у APK — «PK».'],
+ ['Какая архитектура у почти любого современного Android-телефона?',['x86-64','MIPS','ARM64 (AArch64)'],2,'Проверить: uname -m → aarch64.'],
+ ['Чем лучше всего открыть Android-приложение (APK)?',['jadx','x64dbg','Блокнот'],0,'Код APK — это байткод DEX, jadx превращает его почти в исходный Java/Kotlin.'],
+ ['Почему декомпилятор Ghidra не работает «из коробки» в proot Debian на телефоне?',['Ghidra не поддерживает ARM-файлы','В релизе нет нативных бинарников для Linux ARM64 — их надо собрать (buildNatives)','Нужен root'],1,'Ghidra анализирует ARM-файлы где угодно, но сама её нативная часть под Linux ARM64 собирается пользователем.'],
+ ['Где лежит первый аргумент функции на ARM64?',['rdi','x0','[esp+4]'],1,'rdi — x86-64 Linux, [esp+4] — x86 32-бит cdecl.'],
+ ['Как число 0x11223344 лежит в памяти на little-endian?',['11 22 33 44','44 33 22 11','33 44 11 22'],1,'Младший байт идёт первым.'],
+ ['Termux внезапно пишет «Process completed (signal 9)» во время сборки. Вероятная причина?',['Сломался Debian','Android убивает фоновые дочерние процессы (phantom process killer)','Нет интернета'],1,'Отключи ограничения дочерних процессов в настройках разработчика (Android 14+) или через ADB (12–13).']
+];
+let score=0,answered=0;
+$('#quizBox').innerHTML=Q.map((q,i)=>`<div class="q" data-q="${i}"><p>${i+1}. ${esc(q[0])}</p><div class="opts">${q[1].map((o,j)=>`<button data-j="${j}">${esc(o)}</button>`).join('')}</div><div class="expl">${esc(q[3])}</div></div>`).join('');
+$$('.q').forEach(qd=>{const q=Q[+qd.dataset.q];qd.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  const j=+b.dataset.j; qd.querySelectorAll('button').forEach(x=>{x.disabled=true;if(+x.dataset.j===q[2])x.classList.add('right');});
+  if(j!==q[2])b.classList.add('wrong');else score++; answered++; qd.querySelector('.expl').classList.add('show');
+  if(answered===Q.length)$('#quizScore').textContent=`Результат: ${score} из ${Q.length}. ${score===Q.length?'Идеально!':score>=5?'Отлично, база есть.':'Перечитай разделы выше — и попробуй снова (обнови страницу).'}`;
+});});
+
+/* ---------- copy buttons ---------- */
+$$('.code pre').forEach(pre=>{if(pre.id)return;const b=document.createElement('button');b.className='btn copy';b.textContent='Копия';b.setAttribute('aria-label','Скопировать код');
+ b.onclick=async()=>{const t=pre.innerText.split('\n').map(l=>l.replace(/\s+#\s.*$/,'')).join('\n').trim();
+  try{await navigator.clipboard.writeText(t);}catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();}
+  b.textContent='✓';setTimeout(()=>b.textContent='Копия',1400);};pre.parentNode.appendChild(b);pre.parentNode.classList.add('hc');});
+
+/* ---------- nav ---------- */
+const links=$$('nav.toc a'), secs=links.map(a=>$(a.getAttribute('href')));
+function onScroll(){const h=document.documentElement;$('#bar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%';
+ let cur=-1;secs.forEach((s,i)=>{if(s.getBoundingClientRect().top<120)cur=i;});
+ links.forEach((a,i)=>a.classList.toggle('on',i===cur));
+ if(cur>=0){const a=links[cur],n=a.parentNode;if(a.offsetLeft<n.scrollLeft||a.offsetLeft+a.offsetWidth>n.scrollLeft+n.clientWidth)n.scrollLeft=a.offsetLeft-16;}}
+addEventListener('scroll',onScroll,{passive:true});onScroll();
+})();
+</script>
+</body>
+</html>
